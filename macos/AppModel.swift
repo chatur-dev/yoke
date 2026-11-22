@@ -17,6 +17,7 @@ final class AppModel {
     var capture: PadControl?
     var preview = Stick.zero
     var loginError: String?
+    var deleteMode = false
 
     private let storeURL: URL
     private let injector = EventInjector()
@@ -54,8 +55,8 @@ final class AppModel {
         } else if profile.action(for: .rightBumper) == .hold(.function) {
             profile.setAction(.dictate, for: .rightBumper)
         }
-        if profile.action(for: .back) == .tap(.spotlight) {
-            profile.setAction(.hold(.backspace), for: .back)
+        if profile.action(for: .back) == .tap(.spotlight) || profile.action(for: .back) == .hold(.backspace) {
+            profile.setAction(.deleteMode, for: .back)
         }
         if profile.action(for: .dpadLeft) == .hold(.arrowLeft) {
             profile.setAction(.tap(.previousSpace), for: .dpadLeft)
@@ -220,6 +221,7 @@ final class AppModel {
         } else {
             suspended = mapper.suspended
         }
+        if deleteMode != mapper.deleteMode { deleteMode = mapper.deleteMode }
         if controllerName == nil || capture != nil {
             injector.releaseAll()
         } else {

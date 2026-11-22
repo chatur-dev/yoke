@@ -211,7 +211,7 @@ private final class HIDPad {
             } else if !pressed {
                 downButtons.remove(usage)
             }
-            if let control = control(usage) {
+            if let control = resolved(usage) {
                 state.amount[control] = pressed ? 1 : 0
             }
             onInput?()
@@ -237,6 +237,19 @@ private final class HIDPad {
             }
         }
         onInput?()
+    }
+
+    private func resolved(_ usage: Int) -> PadControl? {
+        let mapped = control(usage)
+        let triggersAreAxes = axes[.leftTrigger] != nil || axes[.rightTrigger] != nil
+        guard triggersAreAxes else { return mapped }
+        switch usage {
+        case 7 where mapped == .leftTrigger: return .back
+        case 8 where mapped == .rightTrigger: return .menu
+        case 9 where mapped == .back: return .leftStickClick
+        case 10 where mapped == .menu: return .rightStickClick
+        default: return mapped
+        }
     }
 
     private func applyHat(_ raw: Double, element: IOHIDElement) {

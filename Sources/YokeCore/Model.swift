@@ -82,6 +82,7 @@ enum Action: Equatable, Codable {
     case hold(KeyCombo)
     case tap(KeyCombo)
     case dictate
+    case deleteMode
     case suspend
     case none
 }
@@ -131,7 +132,7 @@ struct Profile: Equatable, Codable {
             PadBinding(control: .dpadLeft, action: .tap(.previousSpace)),
             PadBinding(control: .dpadRight, action: .tap(.nextSpace)),
             PadBinding(control: .menu, action: .suspend),
-            PadBinding(control: .back, action: .hold(.backspace)),
+            PadBinding(control: .back, action: .deleteMode),
         ],
         feel: .bed,
         dictation: .function,
@@ -187,15 +188,25 @@ struct FrameOutput: Equatable {
     var tappedKeys: [KeyCombo] = []
     var suspended = false
     var precision = false
+    var deleteMode = false
+    var deleteChunk: DeleteChunk?
+    var deleteCount = 0
 
     static let empty = FrameOutput()
+}
+
+enum DeleteChunk: Equatable {
+    case character, word, line
 }
 
 struct Mapper {
     var profile: Profile
     var suspended = false
+    var deleteMode = false
     private var wasDown: Set<PadControl> = []
     private var lowFrames: [PadControl: Int] = [:]
+    private var deleteDebt: Double = 0
+    private var deleteChunk: DeleteChunk?
 
     init(profile: Profile = .bed) {
         self.profile = profile
@@ -210,6 +221,15 @@ struct Mapper {
         if let suspendControl = PadControl.allCases.first(where: { profile.action(for: $0) == .suspend }),
            rising.contains(suspendControl) {
             suspended.toggle()
+            if suspended {
+                deleteMode = false
+                deleteDebt = 0
+            }
+        }
+        if rising.contains(where: { profile.action(for: $0) == .deleteMode }) {
+            deleteMode.toggle()
+            deleteDebt = 0
+            deleteChunk = nil
         }
 
         guard !suspended else {
@@ -228,7 +248,21 @@ struct Mapper {
             output.scrollX += velocity.x * dt
             output.scrollY += velocity.y * dt
         }
-        if profile.action(for: .rightStick) == .scroll {
+        output.deleteMode = deleteMode
+        if deleteMode, profile.action(for: .rightStick) == .scroll {
+            let plan = StickMath.deletion(stick: pad.right, feel: profile.feel, precision: output.precision)
+            if plan?.chunk != deleteChunk { deleteDebt = 0 }
+            deleteChunk = plan?.chunk
+            if let plan {
+                deleteDebt += plan.perSecond * dt
+                let count = Int(deleteDebt.rounded(.down))
+                if count > 0 {
+                    deleteDebt -= Double(count)
+                    output.deleteChunk = plan.chunk
+                    output.deleteCount = count
+                }
+            }
+        } else if profile.action(for: .rightStick) == .scroll {
             let velocity = StickMath.scrollVelocity(stick: pad.right, feel: profile.feel)
             output.scrollX += velocity.x * dt
             output.scrollY += velocity.y * dt
@@ -280,6 +314,21 @@ enum StickMath {
     }
 
     /// Scroll velocity y is positive up, in pixels per second.
+    static func deletion(stick: Stick, feel: Feel, precision: Bool) -> (chunk: DeleteChunk, perSecond: Double)? {
+        let mag = curve(stick, deadzone: feel.deadzone, exponent: 1).magnitude
+        guard mag > 0.02 else { return nil }
+        if precision {
+            return (.character, (4 + 10 * mag) * feel.precisionScale)
+        }
+        if mag < 0.42 {
+            return (.character, 8 + 16 * (mag / 0.42))
+        }
+        if mag < 0.75 {
+            return (.word, 2 + 5 * ((mag - 0.42) / 0.33))
+        }
+        return (.line, 1.2 + 2 * min(1, (mag - 0.75) / 0.25))
+    }
+
     static func scrollVelocity(stick: Stick, feel: Feel) -> Stick {
         var shaped = curve(stick, deadzone: feel.deadzone, exponent: feel.exponent)
         if feel.invertScroll { shaped.y = -shaped.y }

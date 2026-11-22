@@ -24,6 +24,9 @@ final class EventInjector {
     func apply(_ frame: FrameOutput) {
         move(dx: frame.mouseX, dy: frame.mouseY)
         scroll(dx: frame.scrollX, dy: frame.scrollY)
+        if frame.deleteCount > 0, let chunk = frame.deleteChunk {
+            for _ in 0..<frame.deleteCount { postDelete(chunk) }
+        }
         setClicks(frame.clicks)
         setHeldKeys(frame.heldKeys)
         for combo in frame.tappedKeys {
@@ -62,6 +65,17 @@ final class EventInjector {
             event.setIntegerValueField(.mouseEventButtonNumber, value: 2)
         }
         event.post(tap: .cghidEventTap)
+    }
+
+    private func postDelete(_ chunk: DeleteChunk) {
+        let combo: KeyCombo
+        switch chunk {
+        case .character: combo = .backspace
+        case .word: combo = KeyCombo(keyCode: 51, modifiers: .option)
+        case .line: combo = KeyCombo(keyCode: 51, modifiers: .command)
+        }
+        postKey(combo, down: true)
+        postKey(combo, down: false)
     }
 
     private func scroll(dx: Double, dy: Double) {

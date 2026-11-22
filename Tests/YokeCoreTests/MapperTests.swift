@@ -41,6 +41,25 @@ final class MapperTests: XCTestCase {
         XCTAssertTrue(released.heldKeys.isEmpty)
     }
 
+    func testBackEntersDeleteModeAndPrecisionStaysOnCharacters() {
+        XCTAssertEqual(StickMath.deletion(stick: Stick(x: 0, y: 1), feel: .bed, precision: true)?.chunk, .character)
+        XCTAssertEqual(StickMath.deletion(stick: Stick(x: 1, y: 0), feel: .bed, precision: false)?.chunk, .line)
+        var mapper = Mapper()
+        var back = PadState()
+        back.amount[.back] = 1
+        XCTAssertTrue(mapper.step(back, dt: 0.01).deleteMode)
+        var slow = PadState()
+        slow.right = Stick(x: 0, y: 1)
+        slow.amount[.leftTrigger] = 1
+        var count = 0
+        for _ in 0..<40 {
+            let frame = mapper.step(slow, dt: 0.05)
+            XCTAssertEqual(frame.scrollY, 0)
+            if frame.deleteChunk == .character { count += frame.deleteCount }
+        }
+        XCTAssertGreaterThan(count, 0)
+    }
+
     func testTapFiresOnce() {
         var mapper = Mapper()
         var pad = PadState()

@@ -9,6 +9,7 @@ struct PopoverView: View {
             VStack(alignment: .leading, spacing: 12) {
                 header
                 if !model.trusted { permission }
+                if model.deleteMode { deleteBanner }
                 if model.controllerName == nil {
                     empty
                 } else {
@@ -70,6 +71,12 @@ struct PopoverView: View {
         Text("Pair the Evo Fox, or any other pad, in System Settings → Bluetooth. Yoke picks it up on its own.")
             .font(.callout)
             .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var deleteBanner: some View {
+        Text("Delete mode. Push the scroll stick to erase. A hard push takes words, then the line. Hold LT to erase one character at a time. Press Back again to leave.")
+            .font(.callout)
             .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -225,7 +232,7 @@ private enum Choice: String, CaseIterable, Identifiable {
     case pointer, scroll, precision
     case leftClick, rightClick, middleClick
     case talk, option, command, control, shift, function
-    case missionControl, spotlight, previousSpace, nextSpace, appWindows, enter, send, backspace, delete, selectBack, arrow, suspend, none
+    case missionControl, spotlight, previousSpace, nextSpace, appWindows, enter, send, deleteMode, backspace, delete, selectBack, arrow, suspend, none
     var id: String { rawValue }
 
     var label: String {
@@ -249,6 +256,7 @@ private enum Choice: String, CaseIterable, Identifiable {
         case .appWindows: "App windows"
         case .enter: "Enter"
         case .send: "Send"
+        case .deleteMode: "Delete mode"
         case .backspace: "Backspace"
         case .delete: "Delete"
         case .selectBack: "Select back"
@@ -262,7 +270,7 @@ private enum Choice: String, CaseIterable, Identifiable {
         if control == .leftStick || control == .rightStick {
             return [.pointer, .scroll, .none]
         }
-        return [.talk, .enter, .send, .previousSpace, .nextSpace, .missionControl, .appWindows, .backspace, .delete, .selectBack, .precision, .leftClick, .rightClick, .middleClick, .option, .command, .control, .shift, .function, .spotlight, .arrow, .suspend, .none]
+        return [.talk, .deleteMode, .enter, .send, .previousSpace, .nextSpace, .missionControl, .appWindows, .backspace, .delete, .selectBack, .precision, .leftClick, .rightClick, .middleClick, .option, .command, .control, .shift, .function, .spotlight, .arrow, .suspend, .none]
     }
 
     static func matching(_ action: Action, control: PadControl) -> Choice {
@@ -290,6 +298,7 @@ private enum Choice: String, CaseIterable, Identifiable {
         case .hold(let combo) where combo == .backspace: .backspace
         case .hold(let combo) where combo == .forwardDelete: .delete
         case .hold(let combo) where combo == .selectLeft || combo == .selectWord: .selectBack
+        case .deleteMode: .deleteMode
         case .suspend: .suspend
         case .none: .none
         default: .none
@@ -317,6 +326,7 @@ private enum Choice: String, CaseIterable, Identifiable {
         case .appWindows: .tap(.appWindows)
         case .enter: .tap(.enter)
         case .send: .tap(.send)
+        case .deleteMode: .deleteMode
         case .backspace: .hold(.backspace)
         case .delete: .hold(.forwardDelete)
         case .selectBack: .hold(.selectWord)
