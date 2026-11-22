@@ -15,13 +15,23 @@ final class EventInjector {
     private var functionAsserted = Date.distantPast
     private var modifierKeysDown: Set<CGKeyCode> = []
     private var keyRepeatAt: [KeyCombo: Date] = [:]
+    private var cursorQuartz: CGPoint?
+    private var pressOrigin: CGPoint?
+    private var draggedPastSlop = false
+    private let clickSlop: CGFloat = 8
 
     init() {
         source = CGEventSource(stateID: .hidSystemState)
         source?.localEventsSuppressionInterval = 0
+        // A previous command key event can stay latched in the shared HID source.
+        // Command-click on a Dock icon reveals the app in Finder instead of activating it.
+        postFlags([], keyCode: 55)
     }
 
     func apply(_ frame: FrameOutput) {
+        if clicks.isEmpty, !frame.clicks.isEmpty {
+            setClicks(frame.clicks)
+        }
         move(dx: frame.mouseX, dy: frame.mouseY)
         scroll(dx: frame.scrollX, dy: frame.scrollY)
         if frame.deleteCount > 0, let chunk = frame.deleteChunk {
@@ -49,6 +59,14 @@ final class EventInjector {
         let stepX = residualMouse.x.rounded(.towardZero)
         let stepY = residualMouse.y.rounded(.towardZero)
         guard stepX != 0 || stepY != 0 else { return }
+        if !clicks.isEmpty, let origin = pressOrigin, !draggedPastSlop {
+            let current = currentQuartz()
+            let proposed = CGPoint(x: current.x + stepX, y: current.y + stepY)
+            if hypot(proposed.x - origin.x, proposed.y - origin.y) < clickSlop {
+                return
+            }
+            draggedPastSlop = true
+        }
         residualMouse.x -= stepX
         residualMouse.y -= stepY
         // NSEvent.mouseLocation stays in Cocoa space at the screen edge. CGEvent.location
@@ -58,9 +76,11 @@ final class EventInjector {
         let clamped = clampToScreens(proposed)
         let quartz = quartzPoint(clamped)
         CGWarpMouseCursorPosition(quartz)
+        cursorQuartz = quartz
         let type = dragType()
         let button = dragButton()
         guard let event = CGEvent(mouseEventSource: source, mouseType: type, mouseCursorPosition: quartz, mouseButton: button) else { return }
+        event.flags = modifierFlags
         if button == .center {
             event.setIntegerValueField(.mouseEventButtonNumber, value: 2)
         }
@@ -86,14 +106,16 @@ final class EventInjector {
         guard stepX != 0 || stepY != 0 else { return }
         residualScroll.x -= Double(stepX)
         residualScroll.y -= Double(stepY)
-        CGEvent(
+        guard let event = CGEvent(
             scrollWheelEvent2Source: source,
             units: .pixel,
             wheelCount: 2,
             wheel1: stepY,
             wheel2: stepX,
             wheel3: 0
-        )?.post(tap: .cghidEventTap)
+        ) else { return }
+        event.flags = modifierFlags
+        event.post(tap: .cghidEventTap)
     }
 
     private func setClicks(_ desired: Set<MouseButton>) {
@@ -213,6 +235,9 @@ final class EventInjector {
             event.setIntegerValueField(.keyboardEventAutorepeat, value: 1)
         }
         event.post(tap: .cghidEventTap)
+        if !down {
+            postFlags(modifierFlags, keyCode: modifierKeyCode)
+        }
     }
 
     private func postFlags(_ flags: CGEventFlags, keyCode: CGKeyCode) {
@@ -236,12 +261,33 @@ final class EventInjector {
             type = down ? .otherMouseDown : .otherMouseUp
             cgButton = .center
         }
-        guard let event = CGEvent(mouseEventSource: source, mouseType: type, mouseCursorPosition: quartzPoint(NSEvent.mouseLocation), mouseButton: cgButton) else { return }
+        let point: CGPoint
+        if down {
+            point = currentQuartz()
+            pressOrigin = point
+            draggedPastSlop = false
+        } else if !draggedPastSlop, let origin = pressOrigin {
+            point = origin
+        } else {
+            point = currentQuartz()
+        }
+        if !down, clicks.count <= 1 {
+            pressOrigin = nil
+            draggedPastSlop = false
+        }
+        CGWarpMouseCursorPosition(point)
+        cursorQuartz = point
+        guard let event = CGEvent(mouseEventSource: source, mouseType: type, mouseCursorPosition: point, mouseButton: cgButton) else { return }
+        event.flags = modifierFlags
         event.setIntegerValueField(.mouseEventClickState, value: 1)
         if button == .middle {
             event.setIntegerValueField(.mouseEventButtonNumber, value: 2)
         }
         event.post(tap: .cghidEventTap)
+    }
+
+    private func currentQuartz() -> CGPoint {
+        cursorQuartz ?? quartzPoint(NSEvent.mouseLocation)
     }
 
     private func dragType() -> CGEventType {
