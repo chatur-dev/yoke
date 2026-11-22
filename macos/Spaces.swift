@@ -70,33 +70,11 @@ enum Spaces {
         activateFrontApp()
     }
 
-    static func toggleOverview() {
-        if overviewOpen {
-            hideOverview()
-            activateFrontApp()
-            return
-        }
-        guard let sky = dlopen("/System/Library/PrivateFrameworks/SkyLight.framework/SkyLight", RTLD_LAZY),
-              let sym = dlsym(sky, "SLSShowSpaces") else { return }
-        typealias Main = @convention(c) () -> Int32
-        typealias Show = @convention(c) (Int32) -> Void
-        let cid = unsafeBitCast(dlsym(sky, "SLSMainConnectionID")!, to: Main.self)()
-        unsafeBitCast(sym, to: Show.self)(cid)
-        overviewOpen = true
-    }
-
     private static var overviewOpen = false
 
     private static func hideOverview() {
         guard overviewOpen else { return }
         overviewOpen = false
-        if let sky = dlopen("/System/Library/PrivateFrameworks/SkyLight.framework/SkyLight", RTLD_LAZY),
-           let sym = dlsym(sky, "SLSHideSpaces") {
-            typealias Main = @convention(c) () -> Int32
-            typealias Hide = @convention(c) (Int32) -> Void
-            let cid = unsafeBitCast(dlsym(sky, "SLSMainConnectionID")!, to: Main.self)()
-            unsafeBitCast(sym, to: Hide.self)(cid)
-        }
         if let down = CGEvent(keyboardEventSource: nil, virtualKey: 53, keyDown: true),
            let up = CGEvent(keyboardEventSource: nil, virtualKey: 53, keyDown: false) {
             down.post(tap: .cghidEventTap)
