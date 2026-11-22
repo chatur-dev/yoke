@@ -236,7 +236,13 @@ final class AppModel {
 
     private func currentReading() -> (name: String, state: PadState, battery: Double?, source: String)? {
         if hid.isConnected, hid.hasInput || !gamepads.isConnected, let name = hid.name {
-            return (name, hid.state, gamepads.battery, "Generic")
+            var state = hid.state
+            if gamepads.isConnected {
+                for control in [PadControl.dpadUp, .dpadDown, .dpadLeft, .dpadRight] {
+                    state.amount[control] = gamepads.state.value(control)
+                }
+            }
+            return (name, state, gamepads.battery, "Generic")
         }
         if gamepads.isConnected, let name = gamepads.name {
             return (name, gamepads.state, gamepads.battery, "Gamepad")

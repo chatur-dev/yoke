@@ -53,6 +53,8 @@ struct KeyCombo: Equatable, Hashable, Codable {
     static let send = KeyCombo(keyCode: 36, modifiers: .command)
     static let arrowUp = KeyCombo(keyCode: 126)
     static let arrowDown = KeyCombo(keyCode: 125)
+    static let browserBack = KeyCombo(keyCode: 123, modifiers: .command)
+    static let browserForward = KeyCombo(keyCode: 124, modifiers: .command)
     static let arrowLeft = KeyCombo(keyCode: 123)
     static let arrowRight = KeyCombo(keyCode: 124)
 
@@ -207,6 +209,7 @@ struct Mapper {
     private var lowFrames: [PadControl: Int] = [:]
     private var deleteDebt: Double = 0
     private var deleteChunk: DeleteChunk?
+    private var swipeArmed = true
 
     init(profile: Profile = .bed) {
         self.profile = profile
@@ -263,9 +266,20 @@ struct Mapper {
                 }
             }
         } else if profile.action(for: .rightStick) == .scroll {
-            let velocity = StickMath.scrollVelocity(stick: pad.right, feel: profile.feel)
-            output.scrollX += velocity.x * dt
-            output.scrollY += velocity.y * dt
+            let shaped = StickMath.curve(pad.right, deadzone: profile.feel.deadzone, exponent: 1)
+            if hypot(shaped.x, shaped.y) < 0.22 { swipeArmed = true }
+            let horizontal = abs(shaped.x) > 0.62 && abs(shaped.x) > abs(shaped.y) * 1.35
+            if swipeArmed && horizontal {
+                swipeArmed = false
+                output.tappedKeys.append(shaped.x > 0 ? .browserBack : .browserForward)
+            } else if !horizontal || swipeArmed {
+                let velocity = StickMath.scrollVelocity(stick: pad.right, feel: profile.feel)
+                output.scrollX += velocity.x * dt
+                output.scrollY += velocity.y * dt
+            } else {
+                let velocity = StickMath.scrollVelocity(stick: Stick(x: 0, y: pad.right.y), feel: profile.feel)
+                output.scrollY += velocity.y * dt
+            }
         } else if profile.action(for: .rightStick) == .mouse {
             let velocity = StickMath.mouseVelocity(stick: pad.right, feel: profile.feel, precision: output.precision)
             output.mouseX += velocity.x * dt

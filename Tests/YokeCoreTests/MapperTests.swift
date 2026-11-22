@@ -60,6 +60,21 @@ final class MapperTests: XCTestCase {
         XCTAssertGreaterThan(count, 0)
     }
 
+    func testRightStickSwipeGoesBackOnce() {
+        var mapper = Mapper()
+        var pad = PadState()
+        pad.right = Stick(x: 1, y: 0.1)
+        let first = mapper.step(pad, dt: 0.01)
+        XCTAssertEqual(first.tappedKeys, [.browserBack])
+        XCTAssertEqual(first.scrollX, 0, accuracy: 0.001)
+        let held = mapper.step(pad, dt: 0.01)
+        XCTAssertTrue(held.tappedKeys.isEmpty)
+        pad.right = .zero
+        _ = mapper.step(pad, dt: 0.01)
+        pad.right = Stick(x: -1, y: 0)
+        XCTAssertEqual(mapper.step(pad, dt: 0.01).tappedKeys, [.browserForward])
+    }
+
     func testTapFiresOnce() {
         var mapper = Mapper()
         var pad = PadState()

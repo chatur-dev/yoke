@@ -241,6 +241,15 @@ private final class HIDPad {
 
     private func resolved(_ usage: Int) -> PadControl? {
         let mapped = control(usage)
+        if axes[.hat] == nil {
+            switch usage {
+            case 12 where mapped == nil || mapped == .rightStickClick: return .dpadUp
+            case 13 where mapped == nil: return .dpadDown
+            case 14 where mapped == nil: return .dpadLeft
+            case 15 where mapped == nil: return .dpadRight
+            default: break
+            }
+        }
         let triggersAreAxes = axes[.leftTrigger] != nil || axes[.rightTrigger] != nil
         guard triggersAreAxes else { return mapped }
         switch usage {

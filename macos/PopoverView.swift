@@ -95,6 +95,11 @@ struct PopoverView: View {
                 get: { model.profile.feel.maxSpeed },
                 set: { model.setSpeed($0) }
             ), in: 400...2800)
+            Text("Scroll speed").font(.caption).foregroundStyle(.secondary)
+            Slider(value: Binding(
+                get: { model.profile.feel.scrollSpeed },
+                set: { model.setScrollSpeed($0) }
+            ), in: 200...2800)
             Toggle("Invert stick", isOn: Binding(
                 get: { model.profile.feel.invertMouseY },
                 set: { model.setInvertMouseY($0) }
@@ -125,7 +130,7 @@ struct PopoverView: View {
                 .pickerStyle(.menu)
                 .frame(maxWidth: 150)
             }
-            Text("Hold RB to talk, and let go to stop. X is Enter. Y is Command+Enter, which sends. The plus pad moves between full-screen apps: left and right switch, up shows all of them.")
+            Text("Hold RB to talk, and let go to stop. Push the scroll stick to scroll. A sideways swipe goes back or forward, the same as two fingers on a trackpad. Plus left and right move the desktop on the screen the pointer is on.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
