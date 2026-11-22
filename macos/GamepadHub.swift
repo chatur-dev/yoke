@@ -40,7 +40,7 @@ final class GamepadHub {
         set(&next, .dpadRight, pad.dpad.right.isPressed)
         if let button = pad.leftThumbstickButton { set(&next, .leftStickClick, button.isPressed) }
         if let button = pad.rightThumbstickButton { set(&next, .rightStickClick, button.isPressed) }
-        if let button = pad.buttonMenu { set(&next, .menu, button.isPressed) }
+        set(&next, .menu, pad.buttonMenu.isPressed)
         if let button = pad.buttonOptions { set(&next, .back, button.isPressed) }
         state = next
         if let level = controller?.battery?.batteryLevel, level >= 0 {
@@ -177,7 +177,7 @@ private final class HIDPad {
             let min = IOHIDElementGetLogicalMin(element)
             let max = IOHIDElementGetLogicalMax(element)
             guard page == HIDPage.desktop else { continue }
-            let axis = Axis(element: element, min: Double(min), max: Double(max))
+            let axis = Axis(element: element, lower: Double(min), upper: Double(max))
             switch usage {
             case UInt32(HIDPage.x): claim(.leftX, axis, prefer: true)
             case UInt32(HIDPage.y): claim(.leftY, axis, prefer: true)
@@ -259,20 +259,20 @@ private enum AxisRole {
 
 private struct Axis {
     let element: IOHIDElement
-    let min: Double
-    let max: Double
+    let lower: Double
+    let upper: Double
 
     func normalize(_ raw: Double, role: AxisRole) -> Double {
-        let span = max - min
+        let span = upper - lower
         guard span != 0 else { return 0 }
         switch role {
         case .leftTrigger, .rightTrigger:
-            return min(1, max(0, (raw - min) / span))
+            return Swift.min(1, Swift.max(0, (raw - lower) / span))
         case .hat:
             return raw
         default:
-            let mid = (min + max) / 2
-            return min(1, max(-1, (raw - mid) / (span / 2)))
+            let mid = (lower + upper) / 2
+            return Swift.min(1, Swift.max(-1, (raw - mid) / (span / 2)))
         }
     }
 }

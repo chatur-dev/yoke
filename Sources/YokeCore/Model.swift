@@ -90,14 +90,14 @@ struct Feel: Equatable, Codable {
     static let bed = Feel()
 }
 
-struct Binding: Equatable, Codable {
+struct PadBinding: Equatable, Codable {
     var control: PadControl
     var action: Action
 }
 
 struct Profile: Equatable, Codable {
     var name: String
-    var bindings: [Binding]
+    var bindings: [PadBinding]
     var feel: Feel
     var dictation: KeyCombo
     var hidButtons: [Int: PadControl]
@@ -105,24 +105,24 @@ struct Profile: Equatable, Codable {
     static let bed = Profile(
         name: "Bed",
         bindings: [
-            Binding(control: .leftStick, action: .mouse),
-            Binding(control: .rightStick, action: .scroll),
-            Binding(control: .leftTrigger, action: .precision),
-            Binding(control: .rightTrigger, action: .dictate),
-            Binding(control: .leftBumper, action: .hold(.leftOption)),
-            Binding(control: .rightBumper, action: .hold(.function)),
-            Binding(control: .south, action: .click(.left)),
-            Binding(control: .east, action: .click(.right)),
-            Binding(control: .west, action: .click(.middle)),
-            Binding(control: .north, action: .tap(.missionControl)),
-            Binding(control: .leftStickClick, action: .click(.left)),
-            Binding(control: .rightStickClick, action: .click(.right)),
-            Binding(control: .dpadUp, action: .hold(.arrowUp)),
-            Binding(control: .dpadDown, action: .hold(.arrowDown)),
-            Binding(control: .dpadLeft, action: .hold(.arrowLeft)),
-            Binding(control: .dpadRight, action: .hold(.arrowRight)),
-            Binding(control: .menu, action: .suspend),
-            Binding(control: .back, action: .tap(.spotlight)),
+            PadBinding(control: .leftStick, action: .mouse),
+            PadBinding(control: .rightStick, action: .scroll),
+            PadBinding(control: .leftTrigger, action: .precision),
+            PadBinding(control: .rightTrigger, action: .dictate),
+            PadBinding(control: .leftBumper, action: .hold(.leftOption)),
+            PadBinding(control: .rightBumper, action: .hold(.function)),
+            PadBinding(control: .south, action: .click(.left)),
+            PadBinding(control: .east, action: .click(.right)),
+            PadBinding(control: .west, action: .click(.middle)),
+            PadBinding(control: .north, action: .tap(.missionControl)),
+            PadBinding(control: .leftStickClick, action: .click(.left)),
+            PadBinding(control: .rightStickClick, action: .click(.right)),
+            PadBinding(control: .dpadUp, action: .hold(.arrowUp)),
+            PadBinding(control: .dpadDown, action: .hold(.arrowDown)),
+            PadBinding(control: .dpadLeft, action: .hold(.arrowLeft)),
+            PadBinding(control: .dpadRight, action: .hold(.arrowRight)),
+            PadBinding(control: .menu, action: .suspend),
+            PadBinding(control: .back, action: .tap(.spotlight)),
         ],
         feel: .bed,
         dictation: .rightOption,
@@ -137,7 +137,7 @@ struct Profile: Equatable, Codable {
         if let index = bindings.firstIndex(where: { $0.control == control }) {
             bindings[index].action = action
         } else {
-            bindings.append(Binding(control: control, action: action))
+            bindings.append(PadBinding(control: control, action: action))
         }
     }
 

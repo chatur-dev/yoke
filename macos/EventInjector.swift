@@ -95,7 +95,7 @@ final class EventInjector {
 
     private func tap(_ combo: KeyCombo) {
         if combo.isModifierOnly {
-            postFlags(combo.modifiers, keyCode: modifierCode(for: combo))
+            postFlags(eventFlags(combo.modifiers), keyCode: modifierCode(for: combo))
             postFlags([], keyCode: modifierCode(for: combo))
             updateModifiers()
             return
