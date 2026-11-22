@@ -272,19 +272,14 @@ struct Mapper {
                 }
             }
         } else if profile.action(for: .rightStick) == .scroll {
+            let velocity = StickMath.scrollVelocity(stick: pad.right, feel: profile.feel)
+            output.scrollX += velocity.x * dt
+            output.scrollY += velocity.y * dt
             let shaped = StickMath.curve(pad.right, deadzone: profile.feel.deadzone, exponent: 1)
-            if hypot(shaped.x, shaped.y) < 0.22 { swipeArmed = true }
-            let horizontal = abs(shaped.x) > 0.48 && abs(shaped.x) > abs(shaped.y) * 1.2
-            if swipeArmed && horizontal {
+            if hypot(shaped.x, shaped.y) < 0.2 { swipeArmed = true }
+            if swipeArmed && abs(shaped.x) > 0.9 && abs(shaped.y) < 0.2 {
                 swipeArmed = false
                 output.tappedKeys.append(shaped.x > 0 ? .browserBack : .browserForward)
-            } else if !horizontal || swipeArmed {
-                let velocity = StickMath.scrollVelocity(stick: pad.right, feel: profile.feel)
-                output.scrollX += velocity.x * dt
-                output.scrollY += velocity.y * dt
-            } else {
-                let velocity = StickMath.scrollVelocity(stick: Stick(x: 0, y: pad.right.y), feel: profile.feel)
-                output.scrollY += velocity.y * dt
             }
         } else if profile.action(for: .rightStick) == .mouse {
             let velocity = StickMath.mouseVelocity(stick: pad.right, feel: profile.feel, precision: output.precision)

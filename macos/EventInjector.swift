@@ -177,8 +177,8 @@ final class EventInjector {
     private func tap(_ combo: KeyCombo) {
         if combo == .previousSpace { Spaces.step(-1); return }
         if combo == .nextSpace { Spaces.step(1); return }
-        if combo == .missionControl { Spaces.missionControl(); return }
-        if combo == .appWindows { Spaces.appWindows(); return }
+        if combo == .missionControl { Spaces.toggleOverview(); return }
+        if combo == .appWindows { Spaces.stepDesktop(1); return }
         if combo.isModifierOnly {
             postFlags(eventFlags(combo.modifiers), keyCode: modifierCode(for: combo))
             postFlags([], keyCode: modifierCode(for: combo))
