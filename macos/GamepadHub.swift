@@ -19,6 +19,12 @@ final class GamepadHub {
     }
 
     func poll() {
+        if controller?.extendedGamepad == nil {
+            controller = GCController.controllers().first { $0.extendedGamepad != nil }
+            if let controller {
+                name = controller.vendorName ?? controller.productCategory
+            }
+        }
         guard let pad = controller?.extendedGamepad else {
             state = PadState()
             return
@@ -38,6 +44,12 @@ final class GamepadHub {
         set(&next, .dpadDown, pad.dpad.down.isPressed)
         set(&next, .dpadLeft, pad.dpad.left.isPressed)
         set(&next, .dpadRight, pad.dpad.right.isPressed)
+        let named = controller?.physicalInputProfile.buttons
+        func namedDown(_ key: String) -> Bool { named?[key]?.isPressed == true }
+        if namedDown("Direction Pad Up") { set(&next, .dpadUp, true) }
+        if namedDown("Direction Pad Down") { set(&next, .dpadDown, true) }
+        if namedDown("Direction Pad Left") { set(&next, .dpadLeft, true) }
+        if namedDown("Direction Pad Right") { set(&next, .dpadRight, true) }
         if let button = pad.leftThumbstickButton { set(&next, .leftStickClick, button.isPressed) }
         if let button = pad.rightThumbstickButton { set(&next, .rightStickClick, button.isPressed) }
         set(&next, .menu, pad.buttonMenu.isPressed)
@@ -241,14 +253,11 @@ private final class HIDPad {
 
     private func resolved(_ usage: Int) -> PadControl? {
         let mapped = control(usage)
-        if axes[.hat] == nil {
-            switch usage {
-            case 12 where mapped == nil || mapped == .rightStickClick: return .dpadUp
-            case 13 where mapped == nil: return .dpadDown
-            case 14 where mapped == nil: return .dpadLeft
-            case 15 where mapped == nil: return .dpadRight
-            default: break
-            }
+        switch usage {
+        case 13 where mapped == nil: return .ml
+        case 14 where mapped == nil: return .mr
+        case 15 where mapped == nil: return .mr
+        default: break
         }
         let triggersAreAxes = axes[.leftTrigger] != nil || axes[.rightTrigger] != nil
         guard triggersAreAxes else { return mapped }

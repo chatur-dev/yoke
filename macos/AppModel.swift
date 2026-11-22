@@ -67,8 +67,8 @@ final class AppModel {
         if profile.action(for: .west) == .click(.middle) {
             profile.setAction(.tap(.enter), for: .west)
         }
-        if profile.action(for: .north) == .tap(.missionControl) {
-            profile.setAction(.tap(.send), for: .north)
+        if profile.action(for: .north) == .tap(.missionControl) || profile.action(for: .north) == .tap(.send) {
+            profile.setAction(.focusText, for: .north)
         }
         return profile
     }

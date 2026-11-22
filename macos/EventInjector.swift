@@ -32,8 +32,8 @@ final class EventInjector {
         for combo in frame.tappedKeys {
             tap(combo)
         }
-        sustainFunction()
         repeatHeldKeys()
+        if frame.focusText { Focus.frontmostText() }
     }
 
     func releaseAll() {
@@ -170,9 +170,7 @@ final class EventInjector {
     }
 
     private func postFunction(down: Bool) {
-        guard let event = CGEvent(keyboardEventSource: source, virtualKey: 63, keyDown: down) else { return }
-        event.flags = down ? .maskSecondaryFn : []
-        event.post(tap: .cghidEventTap)
+        // A key-down for the Fn key is what makes macOS draw the volume meter. Wispr only needs the flag.
         postFlags(down ? .maskSecondaryFn : [], keyCode: 63)
     }
 

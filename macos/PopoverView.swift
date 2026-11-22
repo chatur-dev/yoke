@@ -186,7 +186,7 @@ struct PopoverView: View {
     }
 
     private var bindingRows: [PadControl] {
-        [.dpadLeft, .dpadRight, .dpadUp, .dpadDown, .west, .north, .south, .east, .back, .rightBumper, .leftBumper, .leftTrigger, .rightTrigger, .menu]
+        [.dpadLeft, .dpadRight, .dpadUp, .dpadDown, .ml, .mr, .west, .north, .south, .east, .back, .rightBumper, .leftBumper, .leftTrigger, .rightTrigger, .menu]
     }
 
     private var footer: some View {
@@ -237,7 +237,7 @@ private enum Choice: String, CaseIterable, Identifiable {
     case pointer, scroll, precision
     case leftClick, rightClick, middleClick
     case talk, option, command, control, shift, function
-    case missionControl, spotlight, previousSpace, nextSpace, appWindows, enter, send, deleteMode, backspace, delete, selectBack, arrow, suspend, none
+    case missionControl, spotlight, previousSpace, nextSpace, appWindows, enter, send, focusText, paste, deleteMode, backspace, delete, selectBack, arrow, suspend, none
     var id: String { rawValue }
 
     var label: String {
@@ -261,6 +261,8 @@ private enum Choice: String, CaseIterable, Identifiable {
         case .appWindows: "App windows"
         case .enter: "Enter"
         case .send: "Send"
+        case .focusText: "Focus text"
+        case .paste: "Paste"
         case .deleteMode: "Delete mode"
         case .backspace: "Backspace"
         case .delete: "Delete"
@@ -275,7 +277,7 @@ private enum Choice: String, CaseIterable, Identifiable {
         if control == .leftStick || control == .rightStick {
             return [.pointer, .scroll, .none]
         }
-        return [.talk, .deleteMode, .enter, .send, .previousSpace, .nextSpace, .missionControl, .appWindows, .backspace, .delete, .selectBack, .precision, .leftClick, .rightClick, .middleClick, .option, .command, .control, .shift, .function, .spotlight, .arrow, .suspend, .none]
+        return [.talk, .deleteMode, .focusText, .paste, .enter, .send, .previousSpace, .nextSpace, .missionControl, .appWindows, .backspace, .delete, .selectBack, .precision, .leftClick, .rightClick, .middleClick, .option, .command, .control, .shift, .function, .spotlight, .arrow, .suspend, .none]
     }
 
     static func matching(_ action: Action, control: PadControl) -> Choice {
@@ -304,6 +306,8 @@ private enum Choice: String, CaseIterable, Identifiable {
         case .hold(let combo) where combo == .forwardDelete: .delete
         case .hold(let combo) where combo == .selectLeft || combo == .selectWord: .selectBack
         case .deleteMode: .deleteMode
+        case .focusText: .focusText
+        case .tap(let combo) where combo == .paste: .paste
         case .suspend: .suspend
         case .none: .none
         default: .none
@@ -331,6 +335,8 @@ private enum Choice: String, CaseIterable, Identifiable {
         case .appWindows: .tap(.appWindows)
         case .enter: .tap(.enter)
         case .send: .tap(.send)
+        case .focusText: .focusText
+        case .paste: .tap(.paste)
         case .deleteMode: .deleteMode
         case .backspace: .hold(.backspace)
         case .delete: .hold(.forwardDelete)
@@ -356,7 +362,9 @@ private extension PadControl {
         case .south: "A / Cross"
         case .east: "B / Circle"
         case .west: "X / Enter"
-        case .north: "Y / Send"
+        case .north: "Y / Focus"
+        case .ml: "ML"
+        case .mr: "MR"
         case .leftBumper: "LB"
         case .rightBumper: "RB"
         case .leftTrigger: "LT"

@@ -53,8 +53,9 @@ struct KeyCombo: Equatable, Hashable, Codable {
     static let send = KeyCombo(keyCode: 36, modifiers: .command)
     static let arrowUp = KeyCombo(keyCode: 126)
     static let arrowDown = KeyCombo(keyCode: 125)
-    static let browserBack = KeyCombo(keyCode: 123, modifiers: .command)
-    static let browserForward = KeyCombo(keyCode: 124, modifiers: .command)
+    static let browserBack = KeyCombo(keyCode: 33, modifiers: .command)
+    static let browserForward = KeyCombo(keyCode: 30, modifiers: .command)
+    static let paste = KeyCombo(keyCode: 9, modifiers: .command)
     static let arrowLeft = KeyCombo(keyCode: 123)
     static let arrowRight = KeyCombo(keyCode: 124)
 
@@ -74,6 +75,7 @@ enum PadControl: String, Codable, CaseIterable, Equatable, Hashable {
     case leftBumper, rightBumper
     case leftTrigger, rightTrigger
     case menu, back
+    case ml, mr
 }
 
 enum Action: Equatable, Codable {
@@ -85,6 +87,7 @@ enum Action: Equatable, Codable {
     case tap(KeyCombo)
     case dictate
     case deleteMode
+    case focusText
     case suspend
     case none
 }
@@ -126,7 +129,9 @@ struct Profile: Equatable, Codable {
             PadBinding(control: .south, action: .click(.left)),
             PadBinding(control: .east, action: .click(.right)),
             PadBinding(control: .west, action: .tap(.enter)),
-            PadBinding(control: .north, action: .tap(.send)),
+            PadBinding(control: .north, action: .focusText),
+            PadBinding(control: .ml, action: .hold(.command)),
+            PadBinding(control: .mr, action: .tap(.paste)),
             PadBinding(control: .leftStickClick, action: .click(.left)),
             PadBinding(control: .rightStickClick, action: .click(.right)),
             PadBinding(control: .dpadUp, action: .tap(.missionControl)),
@@ -193,6 +198,7 @@ struct FrameOutput: Equatable {
     var deleteMode = false
     var deleteChunk: DeleteChunk?
     var deleteCount = 0
+    var focusText = false
 
     static let empty = FrameOutput()
 }
@@ -268,7 +274,7 @@ struct Mapper {
         } else if profile.action(for: .rightStick) == .scroll {
             let shaped = StickMath.curve(pad.right, deadzone: profile.feel.deadzone, exponent: 1)
             if hypot(shaped.x, shaped.y) < 0.22 { swipeArmed = true }
-            let horizontal = abs(shaped.x) > 0.62 && abs(shaped.x) > abs(shaped.y) * 1.35
+            let horizontal = abs(shaped.x) > 0.48 && abs(shaped.x) > abs(shaped.y) * 1.2
             if swipeArmed && horizontal {
                 swipeArmed = false
                 output.tappedKeys.append(shaped.x > 0 ? .browserBack : .browserForward)
@@ -299,8 +305,13 @@ struct Mapper {
             }
         }
         for control in rising where control != .leftStick && control != .rightStick {
-            if case .tap(let combo) = profile.action(for: control) {
+            switch profile.action(for: control) {
+            case .tap(let combo):
                 output.tappedKeys.append(combo)
+            case .focusText:
+                output.focusText = true
+            default:
+                break
             }
         }
         return output
