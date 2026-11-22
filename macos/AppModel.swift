@@ -36,10 +36,40 @@ final class AppModel {
         let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Yoke", isDirectory: true)
         storeURL = directory.appendingPathComponent("profile.json")
-        let loaded = ProfileStore.load(from: storeURL)
+        let loaded = Self.migrated(ProfileStore.load(from: storeURL))
         profile = loaded
         mapper = Mapper(profile: loaded)
+        if loaded != ProfileStore.load(from: storeURL) {
+            try? ProfileStore.save(loaded, to: storeURL)
+        }
         trusted = AXIsProcessTrusted()
+    }
+
+    private static func migrated(_ profile: Profile) -> Profile {
+        var profile = profile
+        if profile.dictation == .rightOption {
+            profile.dictation = .function
+            profile.setAction(.dictate, for: .rightBumper)
+            if profile.action(for: .rightTrigger) == .dictate { profile.setAction(.none, for: .rightTrigger) }
+        } else if profile.action(for: .rightBumper) == .hold(.function) {
+            profile.setAction(.dictate, for: .rightBumper)
+        }
+        if profile.action(for: .back) == .tap(.spotlight) {
+            profile.setAction(.hold(.backspace), for: .back)
+        }
+        if profile.action(for: .dpadLeft) == .hold(.arrowLeft) {
+            profile.setAction(.tap(.previousSpace), for: .dpadLeft)
+            profile.setAction(.tap(.nextSpace), for: .dpadRight)
+            profile.setAction(.tap(.missionControl), for: .dpadUp)
+            profile.setAction(.tap(.appWindows), for: .dpadDown)
+        }
+        if profile.action(for: .west) == .click(.middle) {
+            profile.setAction(.tap(.enter), for: .west)
+        }
+        if profile.action(for: .north) == .tap(.missionControl) {
+            profile.setAction(.tap(.send), for: .north)
+        }
+        return profile
     }
 
     func start() {

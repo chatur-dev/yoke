@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import Foundation
 
@@ -10,6 +11,10 @@ final class EventInjector {
     private var heldKeys: Set<KeyCombo> = []
     private var modifierFlags: CGEventFlags = []
     private var modifierKeyCode: CGKeyCode = 61
+    private var functionDown = false
+    private var functionAsserted = Date.distantPast
+    private var modifierKeysDown: Set<CGKeyCode> = []
+    private var keyRepeatAt: [KeyCombo: Date] = [:]
 
     init() {
         source = CGEventSource(stateID: .hidSystemState)
@@ -24,6 +29,8 @@ final class EventInjector {
         for combo in frame.tappedKeys {
             tap(combo)
         }
+        sustainFunction()
+        repeatHeldKeys()
     }
 
     func releaseAll() {
@@ -41,12 +48,16 @@ final class EventInjector {
         guard stepX != 0 || stepY != 0 else { return }
         residualMouse.x -= stepX
         residualMouse.y -= stepY
-        let next = CGPoint(x: location().x + stepX, y: location().y + stepY)
+        // NSEvent.mouseLocation stays in Cocoa space at the screen edge. CGEvent.location
+        // flips there, so a downward stick keeps posting an off-screen point and the pointer sticks.
+        let cocoa = NSEvent.mouseLocation
+        let proposed = CGPoint(x: cocoa.x + stepX, y: cocoa.y - stepY)
+        let clamped = clampToScreens(proposed)
+        let quartz = quartzPoint(clamped)
+        CGWarpMouseCursorPosition(quartz)
         let type = dragType()
         let button = dragButton()
-        guard let event = CGEvent(mouseEventSource: source, mouseType: type, mouseCursorPosition: next, mouseButton: button) else { return }
-        event.setIntegerValueField(.mouseEventDeltaX, value: Int64(stepX))
-        event.setIntegerValueField(.mouseEventDeltaY, value: Int64(stepY))
+        guard let event = CGEvent(mouseEventSource: source, mouseType: type, mouseCursorPosition: quartz, mouseButton: button) else { return }
         if button == .center {
             event.setIntegerValueField(.mouseEventButtonNumber, value: 2)
         }
@@ -91,6 +102,64 @@ final class EventInjector {
         }
         heldKeys = desired
         updateModifiers()
+        let wantsFunction = desired.contains { $0.modifiers.contains(.function) || $0.keyCode == 63 }
+        if wantsFunction && !functionDown {
+            postFunction(down: true)
+            functionDown = true
+            functionAsserted = Date()
+        } else if !wantsFunction && functionDown {
+            postFunction(down: false)
+            functionDown = false
+        }
+        syncModifierKeys()
+        let repeating = desired.filter { !$0.isModifierOnly && $0.keyCode != 63 }
+        for combo in keyRepeatAt.keys where !repeating.contains(combo) {
+            keyRepeatAt[combo] = nil
+        }
+        for combo in repeating where keyRepeatAt[combo] == nil {
+            keyRepeatAt[combo] = Date().addingTimeInterval(0.32)
+        }
+    }
+
+    private func syncModifierKeys() {
+        var wanted: [CGKeyCode: CGEventFlags] = [:]
+        for combo in heldKeys where combo.isModifierOnly && !combo.modifiers.contains(.function) {
+            wanted[modifierCode(for: combo)] = eventFlags(combo.modifiers)
+        }
+        for code in modifierKeysDown where wanted[code] == nil {
+            postRaw(code, down: false, flags: [])
+        }
+        for (code, flags) in wanted where !modifierKeysDown.contains(code) {
+            postRaw(code, down: true, flags: flags)
+        }
+        modifierKeysDown = Set(wanted.keys)
+    }
+
+    private func repeatHeldKeys() {
+        let now = Date()
+        for (combo, due) in keyRepeatAt where now >= due {
+            postKey(combo, down: true, repeating: true)
+            keyRepeatAt[combo] = now.addingTimeInterval(0.045)
+        }
+    }
+
+    private func postRaw(_ code: CGKeyCode, down: Bool, flags: CGEventFlags) {
+        guard let event = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: down) else { return }
+        event.flags = flags
+        event.post(tap: .cghidEventTap)
+    }
+
+    private func sustainFunction() {
+        guard functionDown, Date().timeIntervalSince(functionAsserted) > 0.2 else { return }
+        postFlags(.maskSecondaryFn, keyCode: 63)
+        functionAsserted = Date()
+    }
+
+    private func postFunction(down: Bool) {
+        guard let event = CGEvent(keyboardEventSource: source, virtualKey: 63, keyDown: down) else { return }
+        event.flags = down ? .maskSecondaryFn : []
+        event.post(tap: .cghidEventTap)
+        postFlags(down ? .maskSecondaryFn : [], keyCode: 63)
     }
 
     private func tap(_ combo: KeyCombo) {
@@ -107,7 +176,7 @@ final class EventInjector {
     private func updateModifiers() {
         var flags = CGEventFlags()
         var code: CGKeyCode = 61
-        for combo in heldKeys where combo.isModifierOnly || combo.modifiers.contains(.function) {
+        for combo in heldKeys where combo.isModifierOnly && !combo.modifiers.contains(.function) {
             flags.formUnion(eventFlags(combo.modifiers))
             code = modifierCode(for: combo)
         }
@@ -120,10 +189,13 @@ final class EventInjector {
         postFlags(flags, keyCode: code)
     }
 
-    private func postKey(_ combo: KeyCombo, down: Bool) {
+    private func postKey(_ combo: KeyCombo, down: Bool, repeating: Bool = false) {
         guard let keyCode = combo.keyCode else { return }
         guard let event = CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(keyCode), keyDown: down) else { return }
         event.flags = eventFlags(combo.modifiers).union(modifierFlags)
+        if repeating {
+            event.setIntegerValueField(.keyboardEventAutorepeat, value: 1)
+        }
         event.post(tap: .cghidEventTap)
     }
 
@@ -148,7 +220,7 @@ final class EventInjector {
             type = down ? .otherMouseDown : .otherMouseUp
             cgButton = .center
         }
-        guard let event = CGEvent(mouseEventSource: source, mouseType: type, mouseCursorPosition: location(), mouseButton: cgButton) else { return }
+        guard let event = CGEvent(mouseEventSource: source, mouseType: type, mouseCursorPosition: quartzPoint(NSEvent.mouseLocation), mouseButton: cgButton) else { return }
         event.setIntegerValueField(.mouseEventClickState, value: 1)
         if button == .middle {
             event.setIntegerValueField(.mouseEventButtonNumber, value: 2)
@@ -169,8 +241,28 @@ final class EventInjector {
         return .left
     }
 
-    private func location() -> CGPoint {
-        CGEvent(source: nil)?.location ?? .zero
+    private func clampToScreens(_ point: CGPoint) -> CGPoint {
+        let frames = NSScreen.screens.map(\.frame)
+        if frames.contains(where: { $0.contains(point) }) { return point }
+        var best = point
+        var bestDistance = Double.greatestFiniteMagnitude
+        for frame in frames {
+            let inset = frame.insetBy(dx: 1, dy: 1)
+            let x = min(max(point.x, inset.minX), inset.maxX)
+            let y = min(max(point.y, inset.minY), inset.maxY)
+            let distance = hypot(Double(x - point.x), Double(y - point.y))
+            if distance < bestDistance {
+                bestDistance = distance
+                best = CGPoint(x: x, y: y)
+            }
+        }
+        return best
+    }
+
+    private func quartzPoint(_ cocoa: CGPoint) -> CGPoint {
+        let primary = NSScreen.screens.first { $0.frame.origin == .zero } ?? NSScreen.main
+        let height = primary?.frame.height ?? 0
+        return CGPoint(x: cocoa.x, y: height - cocoa.y)
     }
 
     private func eventFlags(_ modifiers: KeyModifiers) -> CGEventFlags {

@@ -30,20 +30,22 @@ final class MapperTests: XCTestCase {
     func testDictateHoldsTheConfiguredComboAndReleases() {
         var mapper = Mapper()
         var pad = PadState()
-        pad.amount[.rightTrigger] = 1
+        pad.amount[.rightBumper] = 1
         let held = mapper.step(pad, dt: 1.0 / 120)
-        XCTAssertEqual(held.heldKeys, [.rightOption])
+        XCTAssertEqual(held.heldKeys, [.function])
         XCTAssertTrue(held.tappedKeys.isEmpty)
 
-        let released = mapper.step(PadState(), dt: 1.0 / 120)
+        var released = mapper.step(PadState(), dt: 1.0 / 120)
+        XCTAssertEqual(released.heldKeys, [.function])
+        for _ in 0..<4 { released = mapper.step(PadState(), dt: 1.0 / 120) }
         XCTAssertTrue(released.heldKeys.isEmpty)
     }
 
     func testTapFiresOnce() {
         var mapper = Mapper()
         var pad = PadState()
-        pad.amount[.north] = 1
-        XCTAssertEqual(mapper.step(pad, dt: 0.01).tappedKeys, [.missionControl])
+        pad.amount[.dpadRight] = 1
+        XCTAssertEqual(mapper.step(pad, dt: 0.01).tappedKeys, [.nextSpace])
         XCTAssertTrue(mapper.step(pad, dt: 0.01).tappedKeys.isEmpty)
     }
 
@@ -53,26 +55,30 @@ final class MapperTests: XCTestCase {
         pad.amount[.south] = 1
         XCTAssertEqual(mapper.step(pad, dt: 0.01).clicks, [.left])
         XCTAssertEqual(mapper.step(pad, dt: 0.01).clicks, [.left])
-        XCTAssertTrue(mapper.step(PadState(), dt: 0.01).clicks.isEmpty)
+        var released = mapper.step(PadState(), dt: 0.01)
+        XCTAssertEqual(released.clicks, [.left])
+        for _ in 0..<4 { released = mapper.step(PadState(), dt: 0.01) }
+        XCTAssertTrue(released.clicks.isEmpty)
     }
 
     func testStartSuspendsAndResumesWithoutAStuckKey() {
         var mapper = Mapper()
         var talking = PadState()
-        talking.amount[.rightTrigger] = 1
+        talking.amount[.rightBumper] = 1
         talking.amount[.menu] = 1
         let suspended = mapper.step(talking, dt: 0.01)
         XCTAssertTrue(suspended.suspended)
         XCTAssertTrue(suspended.heldKeys.isEmpty)
 
         var stillHeld = PadState()
-        stillHeld.amount[.rightTrigger] = 1
-        XCTAssertTrue(mapper.step(stillHeld, dt: 0.01).suspended)
-
+        stillHeld.amount[.rightBumper] = 1
+        for _ in 0..<5 {
+            XCTAssertTrue(mapper.step(stillHeld, dt: 0.01).suspended)
+        }
         stillHeld.amount[.menu] = 1
         let resumed = mapper.step(stillHeld, dt: 0.01)
         XCTAssertFalse(resumed.suspended)
-        XCTAssertEqual(resumed.heldKeys, [.rightOption])
+        XCTAssertEqual(resumed.heldKeys, [.function])
     }
 
     func testHitchDoesNotFlingThePointer() {
@@ -95,6 +101,6 @@ final class MapperTests: XCTestCase {
 
     func testMissingProfileFallsBackToBed() {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("missing-\(UUID().uuidString).json")
-        XCTAssertEqual(ProfileStore.load(from: url).dictation, .rightOption)
+        XCTAssertEqual(ProfileStore.load(from: url).dictation, .function)
     }
 }

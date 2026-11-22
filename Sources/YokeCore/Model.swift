@@ -42,6 +42,15 @@ struct KeyCombo: Equatable, Hashable, Codable {
     static let optionF13 = KeyCombo(keyCode: 105, modifiers: .option)
     static let missionControl = KeyCombo(keyCode: 126, modifiers: .control)
     static let spotlight = KeyCombo(keyCode: 49, modifiers: .command)
+    static let backspace = KeyCombo(keyCode: 51)
+    static let forwardDelete = KeyCombo(keyCode: 117)
+    static let selectLeft = KeyCombo(keyCode: 123, modifiers: .shift)
+    static let selectWord = KeyCombo(keyCode: 123, modifiers: [.shift, .option])
+    static let previousSpace = KeyCombo(keyCode: 123, modifiers: .control)
+    static let nextSpace = KeyCombo(keyCode: 124, modifiers: .control)
+    static let appWindows = KeyCombo(keyCode: 125, modifiers: .control)
+    static let enter = KeyCombo(keyCode: 36)
+    static let send = KeyCombo(keyCode: 36, modifiers: .command)
     static let arrowUp = KeyCombo(keyCode: 126)
     static let arrowDown = KeyCombo(keyCode: 125)
     static let arrowLeft = KeyCombo(keyCode: 123)
@@ -108,24 +117,24 @@ struct Profile: Equatable, Codable {
             PadBinding(control: .leftStick, action: .mouse),
             PadBinding(control: .rightStick, action: .scroll),
             PadBinding(control: .leftTrigger, action: .precision),
-            PadBinding(control: .rightTrigger, action: .dictate),
+            PadBinding(control: .rightTrigger, action: .none),
             PadBinding(control: .leftBumper, action: .hold(.leftOption)),
-            PadBinding(control: .rightBumper, action: .hold(.function)),
+            PadBinding(control: .rightBumper, action: .dictate),
             PadBinding(control: .south, action: .click(.left)),
             PadBinding(control: .east, action: .click(.right)),
-            PadBinding(control: .west, action: .click(.middle)),
-            PadBinding(control: .north, action: .tap(.missionControl)),
+            PadBinding(control: .west, action: .tap(.enter)),
+            PadBinding(control: .north, action: .tap(.send)),
             PadBinding(control: .leftStickClick, action: .click(.left)),
             PadBinding(control: .rightStickClick, action: .click(.right)),
-            PadBinding(control: .dpadUp, action: .hold(.arrowUp)),
-            PadBinding(control: .dpadDown, action: .hold(.arrowDown)),
-            PadBinding(control: .dpadLeft, action: .hold(.arrowLeft)),
-            PadBinding(control: .dpadRight, action: .hold(.arrowRight)),
+            PadBinding(control: .dpadUp, action: .tap(.missionControl)),
+            PadBinding(control: .dpadDown, action: .tap(.appWindows)),
+            PadBinding(control: .dpadLeft, action: .tap(.previousSpace)),
+            PadBinding(control: .dpadRight, action: .tap(.nextSpace)),
             PadBinding(control: .menu, action: .suspend),
-            PadBinding(control: .back, action: .tap(.spotlight)),
+            PadBinding(control: .back, action: .hold(.backspace)),
         ],
         feel: .bed,
-        dictation: .rightOption,
+        dictation: .function,
         hidButtons: [:]
     )
 
@@ -186,6 +195,7 @@ struct Mapper {
     var profile: Profile
     var suspended = false
     private var wasDown: Set<PadControl> = []
+    private var lowFrames: [PadControl: Int] = [:]
 
     init(profile: Profile = .bed) {
         self.profile = profile
@@ -248,9 +258,15 @@ struct Mapper {
         return output
     }
 
-    private func isDown(_ control: PadControl, _ pad: PadState) -> Bool {
+    private mutating func isDown(_ control: PadControl, _ pad: PadState) -> Bool {
         if control == .leftStick || control == .rightStick { return false }
-        return pad.value(control) >= profile.feel.triggerThreshold
+        if pad.value(control) >= profile.feel.triggerThreshold {
+            lowFrames[control] = 0
+            return true
+        }
+        let lows = (lowFrames[control] ?? 0) + 1
+        lowFrames[control] = lows
+        return wasDown.contains(control) && lows < 5
     }
 }
 

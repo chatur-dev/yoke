@@ -5,23 +5,26 @@ struct PopoverView: View {
     @Bindable var model: AppModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            header
-            if !model.trusted { permission }
-            if model.controllerName == nil {
-                empty
-            } else {
-                driving
-                speed
-                talk
-                if model.source == "Generic" { generic }
-                bindings
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                header
+                if !model.trusted { permission }
+                if model.controllerName == nil {
+                    empty
+                } else {
+                    driving
+                    speed
+                    talk
+                    if model.source == "Generic" { generic }
+                    bindings
+                }
+                Divider()
+                footer
             }
-            Divider()
-            footer
+            .padding(14)
+            .frame(width: 320, alignment: .leading)
         }
-        .padding(14)
-        .frame(width: 300)
+        .frame(width: 320)
     }
 
     private var header: some View {
@@ -89,12 +92,12 @@ struct PopoverView: View {
                 get: { model.profile.feel.invertMouseY },
                 set: { model.setInvertMouseY($0) }
             ))
-            .font(.callout)
+            .toggleStyle(.checkbox)
             Toggle("Invert scroll", isOn: Binding(
                 get: { model.profile.feel.invertScroll },
                 set: { model.setInvertScroll($0) }
             ))
-            .font(.callout)
+            .toggleStyle(.checkbox)
         }
     }
 
@@ -115,7 +118,7 @@ struct PopoverView: View {
                 .pickerStyle(.menu)
                 .frame(maxWidth: 150)
             }
-            Text("Set Wispr or Hex push-to-talk to the same key. Hold the right trigger.")
+            Text("Hold RB to talk, and let go to stop. X is Enter. Y is Command+Enter, which sends. The plus pad moves between full-screen apps: left and right switch, up shows all of them.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -171,7 +174,7 @@ struct PopoverView: View {
     }
 
     private var bindingRows: [PadControl] {
-        [.rightTrigger, .leftTrigger, .leftBumper, .rightBumper, .south, .east, .west, .north, .menu, .back]
+        [.dpadLeft, .dpadRight, .dpadUp, .dpadDown, .west, .north, .south, .east, .back, .rightBumper, .leftBumper, .leftTrigger, .rightTrigger, .menu]
     }
 
     private var footer: some View {
@@ -180,6 +183,7 @@ struct PopoverView: View {
                 get: { model.loginEnabled },
                 set: { model.setLoginItem($0) }
             ))
+            .toggleStyle(.checkbox)
             if let loginError = model.loginError {
                 Text(loginError).font(.caption).foregroundStyle(.secondary)
             }
@@ -221,7 +225,7 @@ private enum Choice: String, CaseIterable, Identifiable {
     case pointer, scroll, precision
     case leftClick, rightClick, middleClick
     case talk, option, command, control, shift, function
-    case missionControl, spotlight, arrow, suspend, none
+    case missionControl, spotlight, previousSpace, nextSpace, appWindows, enter, send, backspace, delete, selectBack, arrow, suspend, none
     var id: String { rawValue }
 
     var label: String {
@@ -240,6 +244,14 @@ private enum Choice: String, CaseIterable, Identifiable {
         case .function: "Function"
         case .missionControl: "Mission Control"
         case .spotlight: "Spotlight"
+        case .previousSpace: "Previous space"
+        case .nextSpace: "Next space"
+        case .appWindows: "App windows"
+        case .enter: "Enter"
+        case .send: "Send"
+        case .backspace: "Backspace"
+        case .delete: "Delete"
+        case .selectBack: "Select back"
         case .arrow: "Arrow"
         case .suspend: "Suspend"
         case .none: "None"
@@ -250,7 +262,7 @@ private enum Choice: String, CaseIterable, Identifiable {
         if control == .leftStick || control == .rightStick {
             return [.pointer, .scroll, .none]
         }
-        return [.talk, .precision, .leftClick, .rightClick, .middleClick, .option, .command, .control, .shift, .function, .missionControl, .spotlight, .arrow, .suspend, .none]
+        return [.talk, .enter, .send, .previousSpace, .nextSpace, .missionControl, .appWindows, .backspace, .delete, .selectBack, .precision, .leftClick, .rightClick, .middleClick, .option, .command, .control, .shift, .function, .spotlight, .arrow, .suspend, .none]
     }
 
     static func matching(_ action: Action, control: PadControl) -> Choice {
@@ -270,6 +282,14 @@ private enum Choice: String, CaseIterable, Identifiable {
         case .hold(let combo) where combo == control.arrowCombo: .arrow
         case .tap(let combo) where combo == .missionControl: .missionControl
         case .tap(let combo) where combo == .spotlight: .spotlight
+        case .tap(let combo) where combo == .previousSpace: .previousSpace
+        case .tap(let combo) where combo == .nextSpace: .nextSpace
+        case .tap(let combo) where combo == .appWindows: .appWindows
+        case .tap(let combo) where combo == .enter: .enter
+        case .tap(let combo) where combo == .send: .send
+        case .hold(let combo) where combo == .backspace: .backspace
+        case .hold(let combo) where combo == .forwardDelete: .delete
+        case .hold(let combo) where combo == .selectLeft || combo == .selectWord: .selectBack
         case .suspend: .suspend
         case .none: .none
         default: .none
@@ -292,6 +312,14 @@ private enum Choice: String, CaseIterable, Identifiable {
         case .function: .hold(.function)
         case .missionControl: .tap(.missionControl)
         case .spotlight: .tap(.spotlight)
+        case .previousSpace: .tap(.previousSpace)
+        case .nextSpace: .tap(.nextSpace)
+        case .appWindows: .tap(.appWindows)
+        case .enter: .tap(.enter)
+        case .send: .tap(.send)
+        case .backspace: .hold(.backspace)
+        case .delete: .hold(.forwardDelete)
+        case .selectBack: .hold(.selectWord)
         case .arrow: .hold(control.arrowCombo ?? .arrowUp)
         case .suspend: .suspend
         case .none: .none
@@ -306,20 +334,20 @@ private extension PadControl {
         case .rightStick: "Right stick"
         case .leftStickClick: "L3"
         case .rightStickClick: "R3"
-        case .dpadUp: "D-pad up"
-        case .dpadDown: "D-pad down"
-        case .dpadLeft: "D-pad left"
-        case .dpadRight: "D-pad right"
+        case .dpadLeft: "Plus left"
+        case .dpadRight: "Plus right"
+        case .dpadUp: "Plus up"
+        case .dpadDown: "Plus down"
         case .south: "A / Cross"
         case .east: "B / Circle"
-        case .west: "X / Square"
-        case .north: "Y / Triangle"
+        case .west: "X / Enter"
+        case .north: "Y / Send"
         case .leftBumper: "LB"
         case .rightBumper: "RB"
         case .leftTrigger: "LT"
         case .rightTrigger: "RT"
         case .menu: "Start"
-        case .back: "Back"
+        case .back: "Back / Select"
         }
     }
 
