@@ -9,6 +9,7 @@ struct PopoverView: View {
             VStack(alignment: .leading, spacing: 12) {
                 header
                 if !model.trusted { permission }
+                magnifier
                 if model.deleteMode { deleteBanner }
                 if model.controllerName == nil {
                     empty
@@ -78,6 +79,24 @@ struct PopoverView: View {
         Text("Delete mode. Push the scroll stick to erase. A hard push takes words, then the line. Hold LT to erase one character at a time. Press Back again to leave.")
             .font(.callout)
             .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var magnifier: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Magnifier").font(.caption).foregroundStyle(.secondary)
+            HStack(spacing: 6) {
+                ForEach(MagnifierLevel.all, id: \.factor) { level in
+                    Button(level.title) { model.setMagnification(level.factor) }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .tint(model.magnification == level.factor ? Color.accentColor : Color.secondary)
+                }
+            }
+            Text(model.magnification > 1 ? "\(model.magnifierScreen). The view follows the pointer." : "This display. The view follows the pointer.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private var driving: some View {
@@ -383,4 +402,15 @@ private extension PadControl {
         default: nil
         }
     }
+}
+
+private struct MagnifierLevel {
+    var factor: Double
+    var title: String
+    static let all = [
+        MagnifierLevel(factor: 1, title: "Off"),
+        MagnifierLevel(factor: 1.5, title: "1.5×"),
+        MagnifierLevel(factor: 2, title: "2×"),
+        MagnifierLevel(factor: 3, title: "3×"),
+    ]
 }

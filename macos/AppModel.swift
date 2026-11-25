@@ -18,8 +18,11 @@ final class AppModel {
     var preview = Stick.zero
     var loginError: String?
     var deleteMode = false
+    var magnification = 1.0
+    var magnifierScreen = ""
 
     private let storeURL: URL
+    private let magnifier = Magnifier()
     private let injector = EventInjector()
     private var mapper: Mapper
     private let gamepads = GamepadHub()
@@ -90,12 +93,26 @@ final class AppModel {
 
     func stop() {
         timer?.invalidate()
+        magnifier.off()
+        magnification = 1
+        magnifierScreen = ""
         injector.releaseAll()
+    }
+
+    func setMagnification(_ factor: Double) {
+        let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
+        guard magnifier.set(factor, on: screen) else { return }
+        magnification = magnifier.factor
+        magnifierScreen = magnifier.screenName
     }
 
     var iconFilled: Bool { controllerName != nil && !suspended }
 
     var tooltip: String {
+        if magnification > 1 {
+            let level = magnification.formatted(.number.precision(.fractionLength(0...1)))
+            return "Yoke — \(level)×"
+        }
         guard let controllerName else { return "Yoke — no controller" }
         if suspended { return "Yoke — \(controllerName) suspended" }
         return "Yoke — \(controllerName)"

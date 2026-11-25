@@ -101,12 +101,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func refreshIcon() {
-        statusItem?.button?.image = icon(filled: model.iconFilled, deleting: model.deleteMode)
+        statusItem?.button?.image = icon(filled: model.iconFilled, deleting: model.deleteMode, magnified: model.magnification > 1)
         statusItem?.button?.toolTip = model.deleteMode ? "Yoke — delete mode" : model.tooltip
     }
 
-    private func icon(filled: Bool, deleting: Bool = false) -> NSImage {
-        let name = deleting ? "delete.left" : (filled ? "gamecontroller.fill" : "gamecontroller")
+    private func icon(filled: Bool, deleting: Bool = false, magnified: Bool = false) -> NSImage {
+        let name = deleting ? "delete.left" : (magnified ? "plus.magnifyingglass" : (filled ? "gamecontroller.fill" : "gamecontroller"))
         let image = NSImage(systemSymbolName: name, accessibilityDescription: "Yoke") ?? NSImage()
         image.isTemplate = true
         image.size = NSSize(width: 16, height: 16)
