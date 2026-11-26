@@ -13,7 +13,7 @@ A macOS menu-bar app. The left stick moves the pointer, the right stick scrolls,
 
 ## Install
 
-Download the DMG from [Releases](https://github.com/chatur-dev/yoke/releases/latest), open it, and drag Yoke to Applications. Needs macOS 14 or later.
+[Download Yoke](https://github.com/chatur-dev/yoke/releases/latest) and drag it to Applications. Needs macOS 14 or later.
 
 Or build it yourself with the Xcode command line tools:
 
