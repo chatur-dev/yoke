@@ -106,6 +106,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func icon(filled: Bool, deleting: Bool = false, magnified: Bool = false) -> NSImage {
+        if !deleting && !magnified { return MenuBarIcon.image(active: filled) }
         let name = deleting ? "delete.left" : (magnified ? "plus.magnifyingglass" : (filled ? "gamecontroller.fill" : "gamecontroller"))
         let image = NSImage(systemSymbolName: name, accessibilityDescription: "Yoke") ?? NSImage()
         image.isTemplate = true

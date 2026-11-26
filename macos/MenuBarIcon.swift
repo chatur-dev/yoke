@@ -1,0 +1,28 @@
+import AppKit
+
+/// The Yoke mark: a gamepad whose sticks are fried eggs. One colour, so the menu bar tints it.
+enum MenuBarIcon {
+    private static let size = NSSize(width: 25, height: 17)
+    private static let svg = #"""
+<svg xmlns="http://www.w3.org/2000/svg" width="56" height="38" viewBox="0 0 56 38"><g fill="#000"><path fill-rule="evenodd" d="M16 5 C24 4 32 4 40 5 C47 5.8 50.5 10 52 17 L53.8 27 C54.8 33 51 36.5 47 35 C43.5 33.7 42 28 37.5 26.5 C32 25.5 24 25.5 18.5 26.5 C14 28 12.5 33.7 9 35 C5 36.5 1.2 33 2.2 27 L4 17 C5.5 10 9 5.8 16 5 Z M14.53 7.45 C10.21 7.84 8.25 12.29 9.98 16.87 C11.71 21.46 16.15 22.92 20.44 21.02 C24.05 19.42 26.56 15.59 24.42 11.36 C22.89 8.49 20.42 9.65 17.92 8.31 C16.42 7.44 16.00 7.30 14.53 7.45 Z M12.80 15 a3.4 3.4 0 1 0 6.8 0 a3.4 3.4 0 1 0 -6.8 0 Z M41.59 22.30 C45.09 21.66 46.37 17.89 44.63 14.27 C42.89 10.65 39.16 9.77 35.80 11.64 C32.96 13.20 31.18 16.51 33.24 19.80 C34.69 22.04 36.62 20.91 38.76 21.84 C40.05 22.43 40.40 22.52 41.59 22.30 Z M36.80 16.2 a2.8 2.8 0 1 0 5.6 0 a2.8 2.8 0 1 0 -5.6 0 Z M13.80 13.7 a1.1 1.1 0 1 0 2.2 0 a1.1 1.1 0 1 0 -2.2 0 Z M37.60 15.1 a0.95 0.95 0 1 0 1.9 0 a0.95 0.95 0 1 0 -1.9 0 Z"/></g></svg>
+"""#
+
+    private static let active: NSImage = render(alpha: 1)
+    private static let idle: NSImage = render(alpha: 0.45)
+
+    static func image(active isActive: Bool) -> NSImage {
+        isActive ? active : idle
+    }
+
+    private static func render(alpha: CGFloat) -> NSImage {
+        let fallback = NSImage(systemSymbolName: "gamecontroller.fill", accessibilityDescription: "Yoke") ?? NSImage()
+        let source = NSImage(data: Data(svg.utf8)) ?? fallback
+        let image = NSImage(size: size, flipped: false) { rect in
+            source.draw(in: rect, from: .zero, operation: .sourceOver, fraction: alpha)
+            return true
+        }
+        image.isTemplate = true
+        image.accessibilityDescription = "Yoke"
+        return image
+    }
+}
