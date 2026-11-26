@@ -21,4 +21,8 @@ Do not sandbox the app. Sandbox blocks the pointer injection and the gamepad. Do
 
 ## Dictation
 
-Wispr rejects a bare function key. The default hold is Right Option, posted as a real modifier. Fn is a preset, not the default, because macOS often swallows a synthetic Fn. Disconnect, suspend, and quit must release every held key and mouse button.
+The default hold is Fn, posted as a modifier flag only: a Fn key-down makes macOS draw the volume meter. Right Option and Control + Option are presets in the Talk menu. Disconnect, suspend, and quit must release every held key and mouse button.
+
+## Releases
+
+`make dmg` builds a universal DMG. `make release` also tags `v<version>` from `macos/Info.plist` and uploads it. Only the operator publishes.

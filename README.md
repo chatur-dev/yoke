@@ -9,7 +9,7 @@
 
 <p align="center">Drive your Mac from a game controller.</p>
 
-A macOS menu-bar app. The left stick moves the pointer, the right stick scrolls, a shoulder button holds your dictation key, and the plus pad switches desktops.
+A macOS menu-bar app. The left stick moves the pointer, the right stick scrolls, a shoulder button holds your dictation key, and the D-pad switches desktops.
 
 ## Install
 
@@ -37,8 +37,8 @@ Connect a controller, click the Yoke icon in the menu bar, and allow Accessibili
 | A / B | Left click / right click |
 | X | Enter |
 | Y | Focus the text field |
-| Plus left / right | Previous / next desktop |
-| Plus up / down | Next full-screen space / next desktop |
+| D-pad left / right | Previous / next desktop |
+| D-pad up / down | Jump to the next full-screen app / the next regular desktop |
 | Back | Delete mode. Push the right stick to erase. |
 | Start | Suspend or resume |
 
