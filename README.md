@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/yoke-menubar-dark.svg">
+    <img src="assets/yoke-menubar.svg" alt="Yoke: a gamepad with fried eggs for sticks" width="168">
+  </picture>
+</p>
+
 # Yoke
 
 A menu-bar app that flies the Mac pointer from a game controller. Hold a shoulder and it holds the dictation key. The app stays out of the Dock.
