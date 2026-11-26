@@ -1,38 +1,47 @@
 #!/bin/bash
 set -euo pipefail
 
+# YOKE_ARCHS: architectures to build, default this Mac's. YOKE_SIGN_IDENTITY: codesign identity,
+# default the first one in the keychain, or ad-hoc. YOKE_HARDENED=1 turns on the hardened runtime.
+
 root=$(cd "$(dirname "$0")/.." && pwd)
 app="$root/dist/Yoke.app"
 bin="$app/Contents/MacOS"
 sdk=$(xcrun --show-sdk-path)
-arch=$(uname -m)
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
 
 rm -rf "$app"
 mkdir -p "$bin"
 
-swiftc -O -parse-as-library -swift-version 5 \
-  -sdk "$sdk" \
-  -target "${arch}-apple-macosx14.0" \
-  -framework AppKit \
-  -framework SwiftUI \
-  -framework GameController \
-  -framework IOKit \
-  -framework CoreGraphics \
-  -framework ApplicationServices \
-  -framework ServiceManagement \
-  -o "$bin/Yoke" \
-  "$root"/Sources/YokeCore/*.swift \
-  "$root"/macos/*.swift
+slices=()
+for arch in ${YOKE_ARCHS:-$(uname -m)}; do
+  swiftc -O -parse-as-library -swift-version 5 \
+    -sdk "$sdk" \
+    -target "${arch}-apple-macosx14.0" \
+    -framework AppKit \
+    -framework SwiftUI \
+    -framework GameController \
+    -framework IOKit \
+    -framework CoreGraphics \
+    -framework ApplicationServices \
+    -framework ServiceManagement \
+    -o "$work/Yoke-$arch" \
+    "$root"/Sources/YokeCore/*.swift \
+    "$root"/macos/*.swift
+  slices+=("$work/Yoke-$arch")
+done
+lipo -create "${slices[@]}" -output "$bin/Yoke"
 
 mkdir -p "$app/Contents/Resources"
 cp "$root/macos/Info.plist" "$app/Contents/Info.plist"
 
-identity=$(security find-identity -p codesigning -v 2>/dev/null | sed -n 's/.*"\(.*\)"/\1/p' | head -1 || true)
-if [[ -n "${identity}" ]]; then
-  codesign --force --deep --sign "$identity" "$app"
-else
-  codesign --force --deep --sign - "$app"
+if [[ -z "${YOKE_SIGN_IDENTITY+x}" ]]; then
+  YOKE_SIGN_IDENTITY=$(security find-identity -p codesigning -v 2>/dev/null | sed -n 's/.*"\(.*\)"/\1/p' | head -1 || true)
 fi
+sign=(codesign --force --deep --sign "${YOKE_SIGN_IDENTITY:--}")
+if [[ "${YOKE_HARDENED:-}" == "1" ]]; then sign+=(--options runtime --timestamp); fi
+"${sign[@]}" "$app"
 
 echo "Built $app"
 
